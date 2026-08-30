@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.routers import employees
 
 app = FastAPI(
     title=settings.app_name,
@@ -23,3 +24,7 @@ app.add_middleware(
 def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+
+# Register routers
+app.include_router(employees.router)
