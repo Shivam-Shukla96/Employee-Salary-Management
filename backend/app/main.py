@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import employees
+from app.routers import employees, salaries
 
 app = FastAPI(
     title=settings.app_name,
@@ -28,3 +28,4 @@ def health_check():
 
 # Register routers
 app.include_router(employees.router)
+app.include_router(salaries.router)
