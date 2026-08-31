@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import asc, desc, func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.employee import Employee, EmployeeStatus
 from app.models.salary_record import SalaryRecord
@@ -76,8 +76,13 @@ class EmployeeService:
     # ------------------------------------------------------------------
 
     def get_by_id(self, employee_uuid: uuid.UUID) -> Optional[Employee]:
-        """Get a single employee by their internal UUID."""
-        return self.db.query(Employee).filter(Employee.id == employee_uuid).first()
+        """Get a single employee by their internal UUID with salary records eager-loaded."""
+        return (
+            self.db.query(Employee)
+            .options(selectinload(Employee.salary_records))
+            .filter(Employee.id == employee_uuid)
+            .first()
+        )
 
     def list_employees(
         self,
@@ -94,9 +99,10 @@ class EmployeeService:
         """
         List employees with pagination, search, and filtering.
 
+        Uses selectinload to eager-load salary records in 1 batch query (preventing N+1).
         Returns a dict with: items, total, page, page_size, total_pages.
         """
-        query = self.db.query(Employee)
+        query = self.db.query(Employee).options(selectinload(Employee.salary_records))
 
         # Apply filters
         if search:

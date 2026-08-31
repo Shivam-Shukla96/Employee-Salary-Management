@@ -4,13 +4,10 @@ Employee API router — CRUD endpoints for employee management.
 Thin layer: validates input, delegates to EmployeeService, formats output.
 """
 
-import csv
-import io
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -89,61 +86,6 @@ def list_employees(
         page=result["page"],
         page_size=result["page_size"],
         total_pages=result["total_pages"],
-    )
-
-
-@router.get("/export")
-def export_employees_csv(
-    search: Optional[str] = Query(None),
-    country: Optional[str] = Query(None),
-    department: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
-    service: EmployeeService = Depends(_get_service),
-):
-    """Export filtered employees as CSV."""
-    result = service.list_employees(
-        page=1,
-        page_size=100_000,
-        search=search,
-        country=country,
-        department=department,
-        status=status,
-    )
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow([
-        "Employee ID", "Full Name", "Email", "Department",
-        "Job Title", "Country", "Status", "Joining Date",
-        "Current Salary", "Currency",
-    ])
-
-    for emp in result["items"]:
-        salary = ""
-        currency = ""
-        if emp.salary_records:
-            latest = max(emp.salary_records, key=lambda r: r.effective_date)
-            salary = str(latest.base_salary)
-            currency = latest.currency
-
-        writer.writerow([
-            emp.employee_id,
-            emp.full_name,
-            emp.email,
-            emp.department,
-            emp.job_title,
-            emp.country,
-            emp.status.value if hasattr(emp.status, "value") else emp.status,
-            str(emp.joining_date),
-            salary,
-            currency,
-        ])
-
-    output.seek(0)
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=employees.csv"},
     )
 
 

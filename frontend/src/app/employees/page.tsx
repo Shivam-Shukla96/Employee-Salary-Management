@@ -102,15 +102,6 @@ function EmployeesList() {
     updateFilters({ sort_by: field, sort_order: newOrder });
   }
 
-  function handleExport() {
-    const params: Record<string, string> = {};
-    if (debouncedSearch) params.search = debouncedSearch;
-    if (country) params.country = country;
-    if (department) params.department = department;
-    if (status) params.status = status;
-    window.open(api.exportEmployeesCSV(params), "_blank");
-  }
-
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -148,19 +139,10 @@ function EmployeesList() {
             {data ? `${data.total} employees found` : "Loading..."}
           </p>
         </div>
-        <div className="flex gap-2">
-          {/* <button
-            onClick={handleExport}
-            className="px-4 py-2.5 border border-[var(--color-border)] rounded-lg text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Export CSV
-          </button> */}
+        <div>
           <Link
             href="/employees/new"
-            className="px-4 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg text-sm font-medium transition-colors inline-block"
           >
             + Add Employee
           </Link>
