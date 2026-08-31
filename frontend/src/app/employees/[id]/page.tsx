@@ -18,9 +18,6 @@ function formatCurrency(amount: string | null, currency: string): string {
   }).format(parseFloat(amount));
 }
 
-const DEPARTMENTS = ["Engineering", "Sales", "Marketing", "HR", "Finance", "Operations", "Support", "Product"];
-const COUNTRIES = ["US", "UK", "India", "Germany", "Japan", "Brazil", "Canada", "Australia"];
-
 export default function EmployeeDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -141,8 +138,6 @@ export default function EmployeeDetailPage() {
     const trimmedName = editForm.full_name.trim();
     if (!trimmedName) {
       errors.full_name = "Full name is required";
-    } else if (trimmedName.length < 2) {
-      errors.full_name = "Full name must be at least 2 characters";
     }
 
     const trimmedEmail = editForm.email.trim();
@@ -152,8 +147,11 @@ export default function EmployeeDetailPage() {
       errors.email = "Invalid email format (e.g. name@company.com)";
     }
 
-    if (!editForm.department || !DEPARTMENTS.includes(editForm.department)) {
-      errors.department = `Please select a valid department (${DEPARTMENTS.join(", ")})`;
+    const trimmedDept = editForm.department.trim();
+    if (!trimmedDept) {
+      errors.department = "Department is required";
+    } else if (trimmedDept.length < 2) {
+      errors.department = "Department must be at least 2 characters";
     }
 
     const trimmedTitle = editForm.job_title.trim();
@@ -163,8 +161,11 @@ export default function EmployeeDetailPage() {
       errors.job_title = "Job title must be at least 2 characters";
     }
 
-    if (!editForm.country || !COUNTRIES.includes(editForm.country)) {
-      errors.country = `Please select a valid country (${COUNTRIES.join(", ")})`;
+    const trimmedCountry = editForm.country.trim();
+    if (!trimmedCountry) {
+      errors.country = "Country is required";
+    } else if (trimmedCountry.length < 2) {
+      errors.country = "Country must be at least 2 characters";
     }
 
     setEditErrors(errors);
@@ -350,18 +351,16 @@ export default function EmployeeDetailPage() {
 
             <div>
               <label className="block text-xs text-[var(--color-text-muted)] mb-1">Department *</label>
-              <select
+              <input
+                type="text"
                 value={editForm.department}
                 onChange={(e) => {
                   setEditForm({ ...editForm, department: e.target.value });
                   if (editErrors.department) setEditErrors({ ...editErrors, department: "" });
                 }}
                 className={`w-full px-3 py-2 bg-[var(--color-bg)] border rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] ${editErrors.department ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"}`}
-              >
-                {DEPARTMENTS.map((dept) => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
+                placeholder="Engineering"
+              />
               {editErrors.department && <p className="text-xs text-[var(--color-danger)] mt-1">{editErrors.department}</p>}
             </div>
 
@@ -382,18 +381,16 @@ export default function EmployeeDetailPage() {
 
             <div>
               <label className="block text-xs text-[var(--color-text-muted)] mb-1">Country *</label>
-              <select
+              <input
+                type="text"
                 value={editForm.country}
                 onChange={(e) => {
                   setEditForm({ ...editForm, country: e.target.value });
                   if (editErrors.country) setEditErrors({ ...editErrors, country: "" });
                 }}
                 className={`w-full px-3 py-2 bg-[var(--color-bg)] border rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] ${editErrors.country ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"}`}
-              >
-                {COUNTRIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+                placeholder="United States"
+              />
               {editErrors.country && <p className="text-xs text-[var(--color-danger)] mt-1">{editErrors.country}</p>}
             </div>
             <div className="col-span-2 flex gap-2">

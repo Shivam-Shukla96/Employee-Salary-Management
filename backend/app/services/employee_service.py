@@ -163,14 +163,40 @@ class EmployeeService:
         Update employee details (not salary — that's handled by SalaryService).
 
         Only updates fields that are explicitly provided (not None).
+        Guards against:
+        - Inactive employee modification
+        - No-op updates (identical values)
+        - Duplicate email collisions
         Returns None if employee not found.
         """
         employee = self.get_by_id(employee_uuid)
         if not employee:
             return None
 
+        if employee.status == EmployeeStatus.INACTIVE:
+            raise ValueError(
+                f"Cannot update details for inactive employee {employee.employee_id}. Please reactivate first."
+            )
+
         update_data = data.model_dump(exclude_unset=True)
+        changes = {}
         for field, value in update_data.items():
+            if value is not None and getattr(employee, field) != value:
+                changes[field] = value
+
+        if not changes:
+            raise ValueError("No changes detected — employee details are identical to current values")
+
+        if "email" in changes:
+            existing = (
+                self.db.query(Employee)
+                .filter(Employee.email == changes["email"], Employee.id != employee_uuid)
+                .first()
+            )
+            if existing:
+                raise ValueError(f"An employee with email '{changes['email']}' already exists")
+
+        for field, value in changes.items():
             setattr(employee, field, value)
 
         self.db.flush()
@@ -185,11 +211,15 @@ class EmployeeService:
         Soft-delete an employee by setting status to INACTIVE.
 
         The employee remains in the database for historical analytics.
+        Guards against deactivating already inactive employees.
         Returns None if employee not found.
         """
         employee = self.get_by_id(employee_uuid)
         if not employee:
             return None
+
+        if employee.status == EmployeeStatus.INACTIVE:
+            raise ValueError(f"Employee {employee.employee_id} is already inactive")
 
         employee.status = EmployeeStatus.INACTIVE
         self.db.flush()
@@ -199,11 +229,15 @@ class EmployeeService:
         """
         Reactivate a previously deactivated employee.
 
+        Guards against reactivating already active employees.
         Returns None if employee not found.
         """
         employee = self.get_by_id(employee_uuid)
         if not employee:
             return None
+
+        if employee.status == EmployeeStatus.ACTIVE:
+            raise ValueError(f"Employee {employee.employee_id} is already active")
 
         employee.status = EmployeeStatus.ACTIVE
         self.db.flush()

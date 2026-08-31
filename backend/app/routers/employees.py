@@ -182,7 +182,10 @@ def update_employee(
     db: Session = Depends(get_db),
 ):
     """Update employee details (not salary)."""
-    employee = service.update(employee_id, data)
+    try:
+        employee = service.update(employee_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     db.commit()
@@ -196,7 +199,10 @@ def delete_employee(
     db: Session = Depends(get_db),
 ):
     """Soft-delete an employee (set status to inactive)."""
-    employee = service.soft_delete(employee_id)
+    try:
+        employee = service.soft_delete(employee_id)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     db.commit()
@@ -210,7 +216,10 @@ def reactivate_employee(
     db: Session = Depends(get_db),
 ):
     """Reactivate a previously deactivated employee."""
-    employee = service.reactivate(employee_id)
+    try:
+        employee = service.reactivate(employee_id)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     db.commit()

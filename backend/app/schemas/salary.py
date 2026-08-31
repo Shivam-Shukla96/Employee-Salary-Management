@@ -2,14 +2,13 @@
 Pydantic schemas for Salary API requests and responses.
 """
 
+import re
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
-
-from app.config import settings
 
 
 # ---------------------------------------------------------------------------
@@ -28,11 +27,8 @@ class SalaryUpdate(BaseModel):
     @classmethod
     def validate_currency(cls, v: str) -> str:
         v = v.strip().upper()
-        valid_currencies = set(settings.exchange_rates_dict.keys())
-        if v not in valid_currencies:
-            raise ValueError(
-                f"Invalid currency '{v}'. Allowed currencies: {', '.join(sorted(valid_currencies))}"
-            )
+        if not re.match(r"^[A-Z]{3}$", v):
+            raise ValueError(f"Invalid currency code '{v}'. Must be a 3-letter ISO code (e.g. USD, EUR, INR)")
         return v
 
 

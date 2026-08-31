@@ -44,12 +44,9 @@ def _validate_department(v: Optional[str]) -> Optional[str]:
     v = v.strip()
     if not v:
         raise ValueError("Department cannot be empty")
-    valid_map = {d.lower(): d for d in settings.departments_list}
-    if v.lower() not in valid_map:
-        raise ValueError(
-            f"Invalid department '{v}'. Allowed departments: {', '.join(settings.departments_list)}"
-        )
-    return valid_map[v.lower()]
+    if len(v) < 2:
+        raise ValueError("Department name must be at least 2 characters long")
+    return v
 
 
 def _validate_job_title(v: Optional[str]) -> Optional[str]:
@@ -58,6 +55,8 @@ def _validate_job_title(v: Optional[str]) -> Optional[str]:
     v = v.strip()
     if not v:
         raise ValueError("Job title cannot be empty")
+    if len(v) < 2:
+        raise ValueError("Job title must be at least 2 characters long")
     return v
 
 
@@ -67,23 +66,20 @@ def _validate_country(v: Optional[str]) -> Optional[str]:
     v = v.strip()
     if not v:
         raise ValueError("Country cannot be empty")
-    valid_map = {c.lower(): c for c in settings.countries_list}
-    if v.lower() not in valid_map:
-        raise ValueError(
-            f"Invalid country '{v}'. Allowed countries: {', '.join(settings.countries_list)}"
-        )
-    return valid_map[v.lower()]
+    if len(v) < 2:
+        raise ValueError("Country name must be at least 2 characters long")
+    # Basic sanity: country names shouldn't be purely numbers or punctuation
+    if not re.search(r"[A-Za-z]", v):
+        raise ValueError("Country name must contain alphabetic characters")
+    return v
 
 
 def _validate_currency(v: Optional[str]) -> Optional[str]:
     if v is None:
         return v
     v = v.strip().upper()
-    valid_currencies = set(settings.exchange_rates_dict.keys())
-    if v not in valid_currencies:
-        raise ValueError(
-            f"Invalid currency '{v}'. Allowed currencies: {', '.join(sorted(valid_currencies))}"
-        )
+    if not re.match(r"^[A-Z]{3}$", v):
+        raise ValueError(f"Invalid currency code '{v}'. Must be a 3-letter ISO code (e.g. USD, EUR, INR)")
     return v
 
 
