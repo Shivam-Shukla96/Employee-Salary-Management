@@ -148,8 +148,9 @@ export default function NewEmployeePage() {
                 type="date"
                 required
                 value={form.joining_date}
+                onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
                 onChange={(e) => setForm({ ...form, joining_date: e.target.value })}
-                className="w-full px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                className="w-full px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] transition-colors cursor-pointer"
               />
             </div>
           </div>

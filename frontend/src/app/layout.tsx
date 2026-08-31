@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ACME Salary Management",
-  description: "Employee salary management system for ACME Corp — manage employees, track salaries, and view analytics.",
+  title: "Incubyte Salary Management",
+  description: "Employee salary management system for Incubyte — manage employees, track salaries, and view analytics.",
 };
 
 export default function RootLayout({

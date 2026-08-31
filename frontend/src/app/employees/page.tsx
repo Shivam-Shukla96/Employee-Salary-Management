@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { api, Employee, EmployeeListResponse } from "@/lib/api";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -20,18 +21,38 @@ function formatCurrency(amount: string | null, currency: string): string {
   }).format(num);
 }
 
-export default function EmployeesPage() {
+function EmployeesList() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [data, setData] = useState<EmployeeListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters
-  const [search, setSearch] = useState("");
-  const [country, setCountry] = useState("");
-  const [department, setDepartment] = useState("");
-  const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
+  // Read filters from URL search params (preserves state on back navigation)
+  const search = searchParams.get("search") || "";
+  const country = searchParams.get("country") || "";
+  const department = searchParams.get("department") || "";
+  const status = searchParams.get("status") || "";
+  const page = parseInt(searchParams.get("page") || "1", 10);
   const pageSize = 20;
+
+  // Update URL search params when filters change
+  function updateFilters(updates: Record<string, string | number>) {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([k, v]) => {
+      if (v === "" || v === undefined || v === null) {
+        params.delete(k);
+      } else {
+        params.set(k, String(v));
+      }
+    });
+    // Reset to page 1 when filters (not page) change
+    if (!("page" in updates)) {
+      params.delete("page");
+    }
+    router.replace(`/employees?${params.toString()}`, { scroll: false });
+  }
 
   const fetchEmployees = useCallback(async () => {
     setLoading(true);
@@ -55,11 +76,6 @@ export default function EmployeesPage() {
   useEffect(() => {
     fetchEmployees();
   }, [fetchEmployees]);
-
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [search, country, department, status]);
 
   return (
     <div className="animate-fade-in">
@@ -86,12 +102,12 @@ export default function EmployeesPage() {
             type="text"
             placeholder="Search by name, ID, or email..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => updateFilters({ search: e.target.value })}
             className="px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
           />
           <select
             value={department}
-            onChange={(e) => setDepartment(e.target.value)}
+            onChange={(e) => updateFilters({ department: e.target.value })}
             className="px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
           >
             <option value="">All Departments</option>
@@ -101,7 +117,7 @@ export default function EmployeesPage() {
           </select>
           <select
             value={country}
-            onChange={(e) => setCountry(e.target.value)}
+            onChange={(e) => updateFilters({ country: e.target.value })}
             className="px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
           >
             <option value="">All Countries</option>
@@ -111,7 +127,7 @@ export default function EmployeesPage() {
           </select>
           <select
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => updateFilters({ status: e.target.value })}
             className="px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
           >
             <option value="">All Statuses</option>
@@ -205,14 +221,14 @@ export default function EmployeesPage() {
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => updateFilters({ page: Math.max(1, page - 1) })}
                 disabled={page <= 1}
                 className="px-3 py-1.5 text-xs border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 Previous
               </button>
               <button
-                onClick={() => setPage((p) => Math.min(data.total_pages, p + 1))}
+                onClick={() => updateFilters({ page: Math.min(data.total_pages, page + 1) })}
                 disabled={page >= data.total_pages}
                 className="px-3 py-1.5 text-xs border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
@@ -223,5 +239,19 @@ export default function EmployeesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function EmployeesPage() {
+  return (
+    <Suspense fallback={
+      <div className="animate-fade-in space-y-6">
+        <div className="h-8 w-48 bg-[var(--color-border)] rounded animate-pulse-subtle" />
+        <div className="glass rounded-xl p-4 h-16 animate-pulse-subtle" />
+        <div className="glass rounded-xl h-96 animate-pulse-subtle" />
+      </div>
+    }>
+      <EmployeesList />
+    </Suspense>
   );
 }

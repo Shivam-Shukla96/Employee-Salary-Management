@@ -5,7 +5,7 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="animate-fade-in">
-      <h1 className="text-2xl font-bold mb-2">Welcome to ACME Salary Manager</h1>
+      <h1 className="text-2xl font-bold mb-2">Welcome to Incubyte Salary Manager</h1>
       <p className="text-[var(--color-text-muted)] mb-8">
         Manage employees, track salary changes, and view workforce analytics.
       </p>

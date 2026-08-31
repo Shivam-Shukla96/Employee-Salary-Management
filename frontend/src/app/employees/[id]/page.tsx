@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, Employee, SalaryRecord } from "@/lib/api";
@@ -44,6 +44,22 @@ export default function EmployeeDetailPage() {
     country: "",
   });
 
+  // Store original values for dirty checking
+  const [originalEditForm, setOriginalEditForm] = useState({
+    full_name: "",
+    email: "",
+    department: "",
+    job_title: "",
+    country: "",
+  });
+
+  // Check if edit form has changes
+  const hasEditChanges = useMemo(() => {
+    return Object.keys(editForm).some(
+      (key) => editForm[key as keyof typeof editForm] !== originalEditForm[key as keyof typeof originalEditForm]
+    );
+  }, [editForm, originalEditForm]);
+
   useEffect(() => {
     loadEmployee();
   }, [id]);
@@ -57,13 +73,25 @@ export default function EmployeeDetailPage() {
       ]);
       setEmployee(emp);
       setHistory(salaryData.records);
-      setEditForm({
+
+      const formValues = {
         full_name: emp.full_name,
         email: emp.email,
         department: emp.department,
         job_title: emp.job_title,
         country: emp.country,
-      });
+      };
+      setEditForm(formValues);
+      setOriginalEditForm(formValues);
+
+      // Pre-fill salary form with current salary details
+      if (emp.current_salary) {
+        setSalaryForm({
+          base_salary: emp.current_salary.base_salary,
+          currency: emp.current_salary.currency,
+          effective_date: new Date().toISOString().split("T")[0],
+        });
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -77,7 +105,6 @@ export default function EmployeeDetailPage() {
     try {
       await api.updateSalary(id, salaryForm);
       setShowSalaryForm(false);
-      setSalaryForm({ base_salary: "", currency: "USD", effective_date: new Date().toISOString().split("T")[0] });
       await loadEmployee();
     } catch (err: any) {
       setError(err.message);
@@ -88,6 +115,10 @@ export default function EmployeeDetailPage() {
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
+    if (!hasEditChanges) {
+      setEditing(false);
+      return; // No API call if nothing changed
+    }
     setSubmitting(true);
     try {
       await api.updateEmployee(id, editForm);
@@ -108,6 +139,11 @@ export default function EmployeeDetailPage() {
     } catch (err: any) {
       setError(err.message);
     }
+  }
+
+  function handleCancelEdit() {
+    setEditing(false);
+    setEditForm({ ...originalEditForm }); // Reset to original values
   }
 
   if (loading) {
@@ -157,7 +193,7 @@ export default function EmployeeDetailPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setEditing(!editing)}
+              onClick={() => editing ? handleCancelEdit() : setEditing(true)}
               className="px-3 py-1.5 text-xs border border-[var(--color-border)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors"
             >
               {editing ? "Cancel" : "Edit"}
@@ -186,9 +222,20 @@ export default function EmployeeDetailPage() {
                 />
               </div>
             ))}
-            <div className="col-span-2">
-              <button type="submit" disabled={submitting} className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50">
-                {submitting ? "Saving..." : "Save Changes"}
+            <div className="col-span-2 flex gap-2">
+              <button
+                type="submit"
+                disabled={submitting || !hasEditChanges}
+                className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? "Saving..." : hasEditChanges ? "Save Changes" : "No Changes"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="px-4 py-2 border border-[var(--color-border)] rounded-lg text-sm hover:bg-[var(--color-surface-hover)] transition-colors"
+              >
+                Cancel
               </button>
             </div>
           </form>
@@ -257,8 +304,9 @@ export default function EmployeeDetailPage() {
                   type="date"
                   required
                   value={salaryForm.effective_date}
+                  onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
                   onChange={(e) => setSalaryForm({ ...salaryForm, effective_date: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
+                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] cursor-pointer"
                 />
               </div>
             </div>

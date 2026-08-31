@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const navItems = [
   {
@@ -41,7 +42,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-6 py-6 border-b border-[var(--color-border)]">
         <h1 className="text-lg font-bold tracking-tight">
-          <span className="text-[var(--color-primary)]">ACME</span>{" "}
+          <span className="text-[var(--color-primary)]">Incubyte</span>{" "}
           <span className="text-[var(--color-text-muted)] font-normal text-sm">
             Salary Manager
           </span>
@@ -74,8 +75,9 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-6 py-4 border-t border-[var(--color-border)]">
-        <p className="text-xs text-[var(--color-text-muted)]">
+      <div className="px-3 py-4 border-t border-[var(--color-border)] space-y-2">
+        <ThemeToggle />
+        <p className="text-xs text-[var(--color-text-muted)] px-3">
           HR Manager Portal
         </p>
       </div>
