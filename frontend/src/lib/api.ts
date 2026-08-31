@@ -81,10 +81,19 @@ export interface SalarySummary {
   total_payroll_usd: string;
 }
 
+export interface RoleStat {
+  job_title: string;
+  employee_count: number;
+  avg_salary_usd: string;
+  min_salary_usd: string;
+  max_salary_usd: string;
+}
+
 export interface AnalyticsResponse {
   summary: SalarySummary;
   by_department: DepartmentStat[];
   by_country: CountryStat[];
+  by_role: RoleStat[];
 }
 
 export interface EmployeeCreateData {

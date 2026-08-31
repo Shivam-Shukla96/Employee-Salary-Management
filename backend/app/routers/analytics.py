@@ -10,6 +10,7 @@ from app.schemas.analytics import (
     AnalyticsResponse,
     CountrySalaryStat,
     DepartmentSalaryStat,
+    RoleSalaryStat,
     SalarySummary,
 )
 from app.services.analytics_service import AnalyticsService
@@ -29,6 +30,7 @@ def get_full_analytics(service: AnalyticsService = Depends(_get_service)):
         summary=SalarySummary(**data["summary"]),
         by_department=[DepartmentSalaryStat(**d) for d in data["by_department"]],
         by_country=[CountrySalaryStat(**c) for c in data["by_country"]],
+        by_role=[RoleSalaryStat(**r) for r in data["by_role"]],
     )
 
 
@@ -48,3 +50,9 @@ def get_department_stats(service: AnalyticsService = Depends(_get_service)):
 def get_country_stats(service: AnalyticsService = Depends(_get_service)):
     """Get salary statistics grouped by country."""
     return [CountrySalaryStat(**c) for c in service.get_country_stats()]
+
+
+@router.get("/by-role", response_model=list[RoleSalaryStat])
+def get_role_stats(service: AnalyticsService = Depends(_get_service)):
+    """Get salary statistics grouped by job title / role."""
+    return [RoleSalaryStat(**r) for r in service.get_role_stats()]

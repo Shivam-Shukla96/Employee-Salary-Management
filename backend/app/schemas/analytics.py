@@ -30,6 +30,16 @@ class CountrySalaryStat(BaseModel):
     total_payroll_usd: Decimal
 
 
+class RoleSalaryStat(BaseModel):
+    """Salary statistics for a single job title / role."""
+
+    job_title: str
+    employee_count: int
+    avg_salary_usd: Decimal
+    min_salary_usd: Decimal
+    max_salary_usd: Decimal
+
+
 class SalarySummary(BaseModel):
     """Global salary summary across the entire organization."""
 
@@ -47,3 +57,4 @@ class AnalyticsResponse(BaseModel):
     summary: SalarySummary
     by_department: list[DepartmentSalaryStat]
     by_country: list[CountrySalaryStat]
+    by_role: list[RoleSalaryStat]

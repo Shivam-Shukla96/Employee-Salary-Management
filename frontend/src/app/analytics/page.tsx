@@ -94,11 +94,12 @@ export default function AnalyticsPage() {
 
   if (!data) return null;
 
-  const { summary, by_department, by_country } = data;
+  const { summary, by_department, by_country, by_role } = data;
   const maxDeptPayroll = Math.max(...by_department.map((d) => parseFloat(d.total_payroll_usd)), 1);
   const maxCountryPayroll = Math.max(...by_country.map((c) => parseFloat(c.total_payroll_usd)), 1);
   const maxDeptAvg = Math.max(...by_department.map((d) => parseFloat(d.avg_salary_usd)), 1);
   const maxCountryAvg = Math.max(...by_country.map((c) => parseFloat(c.avg_salary_usd)), 1);
+  const maxRoleAvg = Math.max(...(by_role || []).map((r) => parseFloat(r.avg_salary_usd)), 1);
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -305,6 +306,53 @@ export default function AnalyticsPage() {
           </table>
         </div>
       </div>
+
+      {/* Role Breakdown */}
+      {by_role && by_role.length > 0 && (
+        <>
+          <div className="glass rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-1">Average Salary by Role</h2>
+            <p className="text-xs text-[var(--color-text-muted)] mb-5">Normalized to USD, sorted by compensation</p>
+            <BarChart
+              data={[...by_role].sort((a, b) => parseFloat(b.avg_salary_usd) - parseFloat(a.avg_salary_usd))}
+              labelKey="job_title"
+              valueKey="avg_salary_usd"
+              maxValue={maxRoleAvg}
+            />
+          </div>
+
+          {/* Role Detail Table */}
+          <div className="glass rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-[var(--color-border)]">
+              <h2 className="text-lg font-semibold">Role Details</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)]">
+                    <th className="text-left px-4 py-3 text-[var(--color-text-muted)] font-medium">Job Title</th>
+                    <th className="text-right px-4 py-3 text-[var(--color-text-muted)] font-medium">Employees</th>
+                    <th className="text-right px-4 py-3 text-[var(--color-text-muted)] font-medium">Avg Salary</th>
+                    <th className="text-right px-4 py-3 text-[var(--color-text-muted)] font-medium">Min</th>
+                    <th className="text-right px-4 py-3 text-[var(--color-text-muted)] font-medium">Max</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...by_role].sort((a, b) => parseFloat(b.avg_salary_usd) - parseFloat(a.avg_salary_usd)).map((role) => (
+                    <tr key={role.job_title} className="border-b border-[var(--color-border)] hover:bg-[var(--color-surface-hover)] transition-colors">
+                      <td className="px-4 py-3 font-medium">{role.job_title}</td>
+                      <td className="px-4 py-3 text-right text-[var(--color-text-muted)]">{role.employee_count}</td>
+                      <td className="px-4 py-3 text-right font-mono">{formatUSD(role.avg_salary_usd)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-[var(--color-text-muted)]">{formatUSD(role.min_salary_usd)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-[var(--color-text-muted)]">{formatUSD(role.max_salary_usd)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

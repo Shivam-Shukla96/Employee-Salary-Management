@@ -129,12 +129,41 @@ class AnalyticsService:
             "total_payroll_usd": self._round(sum(usd_amounts)),
         }
 
+    def get_role_stats(self) -> list[dict]:
+        """
+        Get salary statistics grouped by job title / role.
+
+        Returns avg, min, max, employee count in USD per role.
+        Only includes active employees with their latest salary.
+        """
+        salaries = self._get_active_employee_salaries_usd()
+
+        role_groups: dict[str, list[Decimal]] = {}
+        for emp in salaries:
+            role = emp["job_title"]
+            if role not in role_groups:
+                role_groups[role] = []
+            role_groups[role].append(emp["salary_usd"])
+
+        result = []
+        for role, amounts in sorted(role_groups.items()):
+            result.append({
+                "job_title": role,
+                "employee_count": len(amounts),
+                "avg_salary_usd": self._round(sum(amounts) / len(amounts)),
+                "min_salary_usd": self._round(min(amounts)),
+                "max_salary_usd": self._round(max(amounts)),
+            })
+
+        return result
+
     def get_full_analytics(self) -> dict:
-        """Get the complete analytics response (summary + department + country)."""
+        """Get the complete analytics response (summary + department + country + role)."""
         return {
             "summary": self.get_summary(),
             "by_department": self.get_department_stats(),
             "by_country": self.get_country_stats(),
+            "by_role": self.get_role_stats(),
         }
 
     # ------------------------------------------------------------------
@@ -191,6 +220,7 @@ class AnalyticsService:
                 "employee_id": emp.id,
                 "department": emp.department,
                 "country": emp.country,
+                "job_title": emp.job_title,
                 "base_salary": salary.base_salary,
                 "currency": salary.currency,
                 "salary_usd": self._round(salary_usd),
