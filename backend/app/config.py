@@ -1,10 +1,11 @@
 from pydantic_settings import BaseSettings
 
 
-class Settings(BaseSettings):
+class Settings(BaseSettings): 
     """Application settings loaded from environment variables."""
 
-    database_url: str = "postgresql://postgres:postgres@localhost:5432/salary_management"
+    # database_url: str = "postgresql://postgres:postgres@localhost:5432/salary_management"
+    database_url: str = "postgresql://postgres:MwvG6C.U8ab#UUk@db.slgfkaqirpwxkhyrjsnh.supabase.co:5432/postgres"
     test_database_url: str = "postgresql://postgres:postgres@localhost:5432/salary_management_test"
 
     # App

@@ -207,20 +207,28 @@ def _generate_joining_date() -> date:
 
 def seed_exchange_rates(session: Session) -> None:
     """Seed the exchange rate table."""
+    existing = session.query(ExchangeRate).count()
+    if existing > 0:
+        print(f"  [SKIP] Exchange rates already exist ({existing} rates)")
+        return
+
     for currency, rate in EXCHANGE_RATES.items():
         exchange_rate = ExchangeRate(currency=currency, rate_to_usd=rate)
         session.add(exchange_rate)
-    session.flush()
-    print(f"  [OK] Seeded {len(EXCHANGE_RATES)} exchange rates")
+    session.commit()
+    print(f"  [OK] Seeded and committed {len(EXCHANGE_RATES)} exchange rates")
 
 
-def seed_employees(session: Session, count: int = 10_000) -> None:
-    """Seed employees with realistic data distribution."""
+def seed_employees(session: Session, count: int = 10_000, batch_size: int = 1000) -> None:
+    """Seed employees with realistic data distribution in fast batches."""
     countries = list(COUNTRY_WEIGHTS.keys())
     country_weights = list(COUNTRY_WEIGHTS.values())
 
     used_emails: set[str] = set()
     employees_created = 0
+
+    batch_employees = []
+    batch_salaries = []
 
     for i in range(1, count + 1):
         # Pick country (weighted)
@@ -254,9 +262,11 @@ def seed_employees(session: Session, count: int = 10_000) -> None:
         # Decide status (~90% active, ~10% inactive)
         status = EmployeeStatus.INACTIVE if random.random() < 0.10 else EmployeeStatus.ACTIVE
 
-        # Create employee
+        # Create employee with pre-generated UUID so we don't need roundtrip flush
+        emp_uuid = uuid.uuid4()
         joining_date = _generate_joining_date()
         employee = Employee(
+            id=emp_uuid,
             employee_id=_generate_employee_id(i),
             full_name=full_name,
             email=email,
@@ -266,25 +276,33 @@ def seed_employees(session: Session, count: int = 10_000) -> None:
             status=status,
             joining_date=joining_date,
         )
-        session.add(employee)
-        session.flush()
+        batch_employees.append(employee)
 
         # Create initial salary record
         salary = _generate_salary(country, title_index)
         salary_record = SalaryRecord(
-            employee_id=employee.id,
+            id=uuid.uuid4(),
+            employee_id=emp_uuid,
             base_salary=salary,
             currency=currency,
             effective_date=joining_date,
         )
-        session.add(salary_record)
+        batch_salaries.append(salary_record)
 
         employees_created += 1
-        if employees_created % 1000 == 0:
-            session.flush()
-            print(f"  ... created {employees_created}/{count} employees")
+        if len(batch_employees) >= batch_size:
+            session.add_all(batch_employees)
+            session.add_all(batch_salaries)
+            session.commit()
+            print(f"  ... committed {employees_created}/{count} employees")
+            batch_employees.clear()
+            batch_salaries.clear()
 
-    session.flush()
+    if batch_employees:
+        session.add_all(batch_employees)
+        session.add_all(batch_salaries)
+        session.commit()
+
     print(f"  [OK] Seeded {employees_created} employees with salary records")
 
 
@@ -305,8 +323,8 @@ def run_seed() -> None:
             return
 
         seed_exchange_rates(session)
-        seed_employees(session, count=10_000)
         session.commit()
+        seed_employees(session, count=10_000)
         print("[SEED] Seed complete!")
     except Exception as e:
         session.rollback()

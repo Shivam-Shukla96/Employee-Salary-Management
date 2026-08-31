@@ -11,7 +11,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import func, or_
+from sqlalchemy import asc, desc, func, or_
 from sqlalchemy.orm import Session
 
 from app.models.employee import Employee, EmployeeStatus
@@ -88,6 +88,8 @@ class EmployeeService:
         department: Optional[str] = None,
         job_title: Optional[str] = None,
         status: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        sort_order: str = "asc",
     ) -> dict:
         """
         List employees with pagination, search, and filtering.
@@ -118,10 +120,23 @@ class EmployeeService:
         # Get total count before pagination
         total = query.count()
 
+        # Apply sorting
+        sortable_columns = {
+            "employee_id": Employee.employee_id,
+            "full_name": Employee.full_name,
+            "department": Employee.department,
+            "country": Employee.country,
+            "job_title": Employee.job_title,
+            "joining_date": Employee.joining_date,
+            "status": Employee.status,
+        }
+        sort_column = sortable_columns.get(sort_by, Employee.employee_id)
+        order_fn = desc if sort_order == "desc" else asc
+
         # Apply pagination
         offset = (page - 1) * page_size
         items = (
-            query.order_by(Employee.employee_id)
+            query.order_by(order_fn(sort_column))
             .offset(offset)
             .limit(page_size)
             .all()
@@ -177,6 +192,20 @@ class EmployeeService:
             return None
 
         employee.status = EmployeeStatus.INACTIVE
+        self.db.flush()
+        return employee
+
+    def reactivate(self, employee_uuid: uuid.UUID) -> Optional[Employee]:
+        """
+        Reactivate a previously deactivated employee.
+
+        Returns None if employee not found.
+        """
+        employee = self.get_by_id(employee_uuid)
+        if not employee:
+            return None
+
+        employee.status = EmployeeStatus.ACTIVE
         self.db.flush()
         return employee
 

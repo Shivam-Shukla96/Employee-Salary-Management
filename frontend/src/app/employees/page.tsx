@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { api, Employee, EmployeeListResponse } from "@/lib/api";
+import { api, EmployeeListResponse } from "@/lib/api";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-[var(--color-success)]/10 text-[var(--color-success)]",
@@ -11,14 +12,44 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function formatCurrency(amount: string | null, currency: string): string {
-  if (!amount) return "—";
-  const num = parseFloat(amount);
+  if (!amount) return "\u2014";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency || "USD",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(num);
+  }).format(parseFloat(amount));
+}
+
+interface SortHeaderProps {
+  label: string;
+  field: string;
+  currentSort: string;
+  currentOrder: string;
+  onSort: (field: string) => void;
+}
+
+function SortHeader({ label, field, currentSort, currentOrder, onSort }: SortHeaderProps) {
+  const isActive = currentSort === field;
+  return (
+    <th
+      className="text-left px-4 py-3 text-[var(--color-text-muted)] font-medium cursor-pointer hover:text-[var(--color-text)] transition-colors select-none"
+      onClick={() => onSort(field)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {isActive && (
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+            {currentOrder === "asc" ? (
+              <path d="M7 14l5-5 5 5z" />
+            ) : (
+              <path d="M7 10l5 5 5-5z" />
+            )}
+          </svg>
+        )}
+      </span>
+    </th>
+  );
 }
 
 function EmployeesList() {
@@ -29,15 +60,27 @@ function EmployeesList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Read filters from URL search params (preserves state on back navigation)
-  const search = searchParams.get("search") || "";
+  // Local search input (for debouncing)
+  const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
+  const debouncedSearch = useDebounce(searchInput, 400);
+
+  // Read other filters from URL
   const country = searchParams.get("country") || "";
   const department = searchParams.get("department") || "";
   const status = searchParams.get("status") || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
+  const sortBy = searchParams.get("sort_by") || "";
+  const sortOrder = searchParams.get("sort_order") || "asc";
   const pageSize = 20;
 
-  // Update URL search params when filters change
+  // Sync debounced search to URL
+  useEffect(() => {
+    const currentUrlSearch = searchParams.get("search") || "";
+    if (debouncedSearch !== currentUrlSearch) {
+      updateFilters({ search: debouncedSearch });
+    }
+  }, [debouncedSearch]);
+
   function updateFilters(updates: Record<string, string | number>) {
     const params = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([k, v]) => {
@@ -47,11 +90,25 @@ function EmployeesList() {
         params.set(k, String(v));
       }
     });
-    // Reset to page 1 when filters (not page) change
+    // Reset to page 1 when non-page filters change
     if (!("page" in updates)) {
       params.delete("page");
     }
     router.replace(`/employees?${params.toString()}`, { scroll: false });
+  }
+
+  function handleSort(field: string) {
+    const newOrder = sortBy === field && sortOrder === "asc" ? "desc" : "asc";
+    updateFilters({ sort_by: field, sort_order: newOrder });
+  }
+
+  function handleExport() {
+    const params: Record<string, string> = {};
+    if (debouncedSearch) params.search = debouncedSearch;
+    if (country) params.country = country;
+    if (department) params.department = department;
+    if (status) params.status = status;
+    window.open(api.exportEmployeesCSV(params), "_blank");
   }
 
   const fetchEmployees = useCallback(async () => {
@@ -59,10 +116,14 @@ function EmployeesList() {
     setError(null);
     try {
       const params: Record<string, string | number> = { page, page_size: pageSize };
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       if (country) params.country = country;
       if (department) params.department = department;
       if (status) params.status = status;
+      if (sortBy) {
+        params.sort_by = sortBy;
+        params.sort_order = sortOrder;
+      }
 
       const result = await api.listEmployees(params);
       setData(result);
@@ -71,7 +132,7 @@ function EmployeesList() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, country, department, status]);
+  }, [page, debouncedSearch, country, department, status, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchEmployees();
@@ -87,12 +148,23 @@ function EmployeesList() {
             {data ? `${data.total} employees found` : "Loading..."}
           </p>
         </div>
-        <Link
-          href="/employees/new"
-          className="px-4 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg text-sm font-medium transition-colors"
-        >
-          + Add Employee
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExport}
+            className="px-4 py-2.5 border border-[var(--color-border)] rounded-lg text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export CSV
+          </button>
+          <Link
+            href="/employees/new"
+            className="px-4 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            + Add Employee
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -101,8 +173,8 @@ function EmployeesList() {
           <input
             type="text"
             placeholder="Search by name, ID, or email..."
-            value={search}
-            onChange={(e) => updateFilters({ search: e.target.value })}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
           />
           <select
@@ -150,13 +222,13 @@ function EmployeesList() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--color-border)]">
-                <th className="text-left px-4 py-3 text-[var(--color-text-muted)] font-medium">ID</th>
-                <th className="text-left px-4 py-3 text-[var(--color-text-muted)] font-medium">Name</th>
-                <th className="text-left px-4 py-3 text-[var(--color-text-muted)] font-medium">Department</th>
-                <th className="text-left px-4 py-3 text-[var(--color-text-muted)] font-medium">Country</th>
-                <th className="text-left px-4 py-3 text-[var(--color-text-muted)] font-medium">Job Title</th>
+                <SortHeader label="ID" field="employee_id" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
+                <SortHeader label="Name" field="full_name" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
+                <SortHeader label="Department" field="department" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
+                <SortHeader label="Country" field="country" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
+                <SortHeader label="Job Title" field="job_title" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
                 <th className="text-right px-4 py-3 text-[var(--color-text-muted)] font-medium">Salary</th>
-                <th className="text-center px-4 py-3 text-[var(--color-text-muted)] font-medium">Status</th>
+                <SortHeader label="Status" field="status" currentSort={sortBy} currentOrder={sortOrder} onSort={handleSort} />
               </tr>
             </thead>
             <tbody>
@@ -199,7 +271,7 @@ function EmployeesList() {
                     <td className="px-4 py-3 text-right font-mono">
                       {emp.current_salary
                         ? formatCurrency(emp.current_salary.base_salary, emp.current_salary.currency)
-                        : "—"}
+                        : "\u2014"}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[emp.status] || ""}`}>

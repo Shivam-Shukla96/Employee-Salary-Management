@@ -4,10 +4,13 @@ Employee API router — CRUD endpoints for employee management.
 Thin layer: validates input, delegates to EmployeeService, formats output.
 """
 
+import csv
+import io
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -64,9 +67,11 @@ def list_employees(
     department: Optional[str] = Query(None),
     job_title: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    sort_by: Optional[str] = Query(None),
+    sort_order: str = Query("asc"),
     service: EmployeeService = Depends(_get_service),
 ):
-    """List employees with pagination, search, and filtering."""
+    """List employees with pagination, search, filtering, and sorting."""
     result = service.list_employees(
         page=page,
         page_size=page_size,
@@ -75,6 +80,8 @@ def list_employees(
         department=department,
         job_title=job_title,
         status=status,
+        sort_by=sort_by,
+        sort_order=sort_order,
     )
     return EmployeeListResponse(
         items=[_to_response(emp) for emp in result["items"]],
@@ -82,6 +89,61 @@ def list_employees(
         page=result["page"],
         page_size=result["page_size"],
         total_pages=result["total_pages"],
+    )
+
+
+@router.get("/export")
+def export_employees_csv(
+    search: Optional[str] = Query(None),
+    country: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    service: EmployeeService = Depends(_get_service),
+):
+    """Export filtered employees as CSV."""
+    result = service.list_employees(
+        page=1,
+        page_size=100_000,
+        search=search,
+        country=country,
+        department=department,
+        status=status,
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Employee ID", "Full Name", "Email", "Department",
+        "Job Title", "Country", "Status", "Joining Date",
+        "Current Salary", "Currency",
+    ])
+
+    for emp in result["items"]:
+        salary = ""
+        currency = ""
+        if emp.salary_records:
+            latest = max(emp.salary_records, key=lambda r: r.effective_date)
+            salary = str(latest.base_salary)
+            currency = latest.currency
+
+        writer.writerow([
+            emp.employee_id,
+            emp.full_name,
+            emp.email,
+            emp.department,
+            emp.job_title,
+            emp.country,
+            emp.status.value if hasattr(emp.status, "value") else emp.status,
+            str(emp.joining_date),
+            salary,
+            currency,
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=employees.csv"},
     )
 
 
@@ -135,6 +197,20 @@ def delete_employee(
 ):
     """Soft-delete an employee (set status to inactive)."""
     employee = service.soft_delete(employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    db.commit()
+    return _to_response(employee)
+
+
+@router.post("/{employee_id}/reactivate", response_model=EmployeeResponse)
+def reactivate_employee(
+    employee_id: uuid.UUID,
+    service: EmployeeService = Depends(_get_service),
+    db: Session = Depends(get_db),
+):
+    """Reactivate a previously deactivated employee."""
+    employee = service.reactivate(employee_id)
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     db.commit()

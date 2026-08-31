@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { api, Employee, SalaryRecord } from "@/lib/api";
+import { useToast } from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
+import Spinner from "@/components/Spinner";
 
 function formatCurrency(amount: string | null, currency: string): string {
-  if (!amount) return "—";
+  if (!amount) return "\u2014";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency || "USD",
@@ -17,13 +20,17 @@ function formatCurrency(amount: string | null, currency: string): string {
 
 export default function EmployeeDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params.id as string;
+  const { toast } = useToast();
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [history, setHistory] = useState<SalaryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Confirm dialog
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"deactivate" | "reactivate">("deactivate");
 
   // Salary update form
   const [showSalaryForm, setShowSalaryForm] = useState(false);
@@ -32,6 +39,7 @@ export default function EmployeeDetailPage() {
     currency: "USD",
     effective_date: new Date().toISOString().split("T")[0],
   });
+  const [salaryErrors, setSalaryErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   // Edit form
@@ -43,8 +51,9 @@ export default function EmployeeDetailPage() {
     job_title: "",
     country: "",
   });
+  const [editErrors, setEditErrors] = useState<Record<string, string>>({});
 
-  // Store original values for dirty checking
+  // Original values for dirty checking
   const [originalEditForm, setOriginalEditForm] = useState({
     full_name: "",
     email: "",
@@ -53,7 +62,6 @@ export default function EmployeeDetailPage() {
     country: "",
   });
 
-  // Check if edit form has changes
   const hasEditChanges = useMemo(() => {
     return Object.keys(editForm).some(
       (key) => editForm[key as keyof typeof editForm] !== originalEditForm[key as keyof typeof originalEditForm]
@@ -84,7 +92,6 @@ export default function EmployeeDetailPage() {
       setEditForm(formValues);
       setOriginalEditForm(formValues);
 
-      // Pre-fill salary form with current salary details
       if (emp.current_salary) {
         setSalaryForm({
           base_salary: emp.current_salary.base_salary,
@@ -99,15 +106,42 @@ export default function EmployeeDetailPage() {
     }
   }
 
+  function validateSalaryForm(): boolean {
+    const errors: Record<string, string> = {};
+    if (!salaryForm.base_salary || parseFloat(salaryForm.base_salary) <= 0) {
+      errors.base_salary = "Salary must be a positive number";
+    }
+    if (!salaryForm.effective_date) {
+      errors.effective_date = "Effective date is required";
+    }
+    setSalaryErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  function validateEditForm(): boolean {
+    const errors: Record<string, string> = {};
+    if (!editForm.full_name.trim()) errors.full_name = "Name is required";
+    if (!editForm.email.trim()) errors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email)) errors.email = "Invalid email format";
+    if (!editForm.department.trim()) errors.department = "Department is required";
+    if (!editForm.job_title.trim()) errors.job_title = "Job title is required";
+    if (!editForm.country.trim()) errors.country = "Country is required";
+    setEditErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
   async function handleSalaryUpdate(e: React.FormEvent) {
     e.preventDefault();
+    if (!validateSalaryForm()) return;
     setSubmitting(true);
     try {
       await api.updateSalary(id, salaryForm);
       setShowSalaryForm(false);
+      setSalaryErrors({});
+      toast("Salary updated successfully", "success");
       await loadEmployee();
     } catch (err: any) {
-      setError(err.message);
+      toast(err.message || "Failed to update salary", "error");
     } finally {
       setSubmitting(false);
     }
@@ -117,33 +151,46 @@ export default function EmployeeDetailPage() {
     e.preventDefault();
     if (!hasEditChanges) {
       setEditing(false);
-      return; // No API call if nothing changed
+      return;
     }
+    if (!validateEditForm()) return;
     setSubmitting(true);
     try {
       await api.updateEmployee(id, editForm);
       setEditing(false);
+      setEditErrors({});
+      toast("Employee updated successfully", "success");
       await loadEmployee();
     } catch (err: any) {
-      setError(err.message);
+      toast(err.message || "Failed to update employee", "error");
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function handleDeactivate() {
-    if (!confirm("Are you sure you want to deactivate this employee?")) return;
+  async function handleStatusChange() {
+    setConfirmOpen(false);
+    setSubmitting(true);
     try {
-      await api.deleteEmployee(id);
+      if (confirmAction === "deactivate") {
+        await api.deleteEmployee(id);
+        toast("Employee deactivated", "success");
+      } else {
+        await api.reactivateEmployee(id);
+        toast("Employee reactivated", "success");
+      }
       await loadEmployee();
     } catch (err: any) {
-      setError(err.message);
+      toast(err.message || "Failed to update status", "error");
+    } finally {
+      setSubmitting(false);
     }
   }
 
   function handleCancelEdit() {
     setEditing(false);
-    setEditForm({ ...originalEditForm }); // Reset to original values
+    setEditForm({ ...originalEditForm });
+    setEditErrors({});
   }
 
   if (loading) {
@@ -171,18 +218,26 @@ export default function EmployeeDetailPage() {
 
   return (
     <div className="animate-fade-in max-w-4xl">
+      <ConfirmDialog
+        open={confirmOpen}
+        title={confirmAction === "deactivate" ? "Deactivate Employee" : "Reactivate Employee"}
+        message={
+          confirmAction === "deactivate"
+            ? `Are you sure you want to deactivate ${employee.full_name}? They will be excluded from analytics.`
+            : `Are you sure you want to reactivate ${employee.full_name}? They will be included in analytics again.`
+        }
+        confirmLabel={confirmAction === "deactivate" ? "Deactivate" : "Reactivate"}
+        variant={confirmAction === "deactivate" ? "danger" : "primary"}
+        onConfirm={handleStatusChange}
+        onCancel={() => setConfirmOpen(false)}
+      />
+
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] mb-6">
         <Link href="/employees" className="hover:text-[var(--color-text)] transition-colors">Employees</Link>
         <span>/</span>
         <span className="text-[var(--color-text)]">{employee.full_name}</span>
       </div>
-
-      {error && (
-        <div className="mb-4 p-3 bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 rounded-lg text-[var(--color-danger)] text-sm">
-          {error}
-        </div>
-      )}
 
       {/* Employee Info */}
       <div className="glass rounded-xl p-6 mb-6">
@@ -198,12 +253,19 @@ export default function EmployeeDetailPage() {
             >
               {editing ? "Cancel" : "Edit"}
             </button>
-            {employee.status === "active" && (
+            {employee.status === "active" ? (
               <button
-                onClick={handleDeactivate}
+                onClick={() => { setConfirmAction("deactivate"); setConfirmOpen(true); }}
                 className="px-3 py-1.5 text-xs border border-[var(--color-danger)]/30 text-[var(--color-danger)] rounded-lg hover:bg-[var(--color-danger)]/10 transition-colors"
               >
                 Deactivate
+              </button>
+            ) : (
+              <button
+                onClick={() => { setConfirmAction("reactivate"); setConfirmOpen(true); }}
+                className="px-3 py-1.5 text-xs border border-[var(--color-success)]/30 text-[var(--color-success)] rounded-lg hover:bg-[var(--color-success)]/10 transition-colors"
+              >
+                Reactivate
               </button>
             )}
           </div>
@@ -215,19 +277,24 @@ export default function EmployeeDetailPage() {
               <div key={field}>
                 <label className="block text-xs text-[var(--color-text-muted)] mb-1 capitalize">{field.replace("_", " ")}</label>
                 <input
-                  type="text"
+                  type={field === "email" ? "email" : "text"}
                   value={editForm[field]}
-                  onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
+                  onChange={(e) => {
+                    setEditForm({ ...editForm, [field]: e.target.value });
+                    if (editErrors[field]) setEditErrors({ ...editErrors, [field]: "" });
+                  }}
+                  className={`w-full px-3 py-2 bg-[var(--color-bg)] border rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] ${editErrors[field] ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"}`}
                 />
+                {editErrors[field] && <p className="text-xs text-[var(--color-danger)] mt-1">{editErrors[field]}</p>}
               </div>
             ))}
             <div className="col-span-2 flex gap-2">
               <button
                 type="submit"
                 disabled={submitting || !hasEditChanges}
-                className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
+                {submitting && <Spinner size={14} />}
                 {submitting ? "Saving..." : hasEditChanges ? "Save Changes" : "No Changes"}
               </button>
               <button
@@ -247,7 +314,7 @@ export default function EmployeeDetailPage() {
               ["Country", employee.country],
               ["Status", employee.status],
               ["Joining Date", employee.joining_date],
-              ["Current Salary", employee.current_salary ? `${formatCurrency(employee.current_salary.base_salary, employee.current_salary.currency)} (${formatCurrency(employee.current_salary.salary_usd, "USD")} USD)` : "—"],
+              ["Current Salary", employee.current_salary ? `${formatCurrency(employee.current_salary.base_salary, employee.current_salary.currency)} (${formatCurrency(employee.current_salary.salary_usd, "USD")} USD)` : "\u2014"],
             ].map(([label, value]) => (
               <div key={label}>
                 <p className="text-xs text-[var(--color-text-muted)]">{label}</p>
@@ -281,10 +348,14 @@ export default function EmployeeDetailPage() {
                   min="0"
                   required
                   value={salaryForm.base_salary}
-                  onChange={(e) => setSalaryForm({ ...salaryForm, base_salary: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)]"
+                  onChange={(e) => {
+                    setSalaryForm({ ...salaryForm, base_salary: e.target.value });
+                    if (salaryErrors.base_salary) setSalaryErrors({ ...salaryErrors, base_salary: "" });
+                  }}
+                  className={`w-full px-3 py-2 bg-[var(--color-surface)] border rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] ${salaryErrors.base_salary ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"}`}
                   placeholder="85000"
                 />
+                {salaryErrors.base_salary && <p className="text-xs text-[var(--color-danger)] mt-1">{salaryErrors.base_salary}</p>}
               </div>
               <div>
                 <label className="block text-xs text-[var(--color-text-muted)] mb-1">Currency</label>
@@ -305,16 +376,21 @@ export default function EmployeeDetailPage() {
                   required
                   value={salaryForm.effective_date}
                   onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
-                  onChange={(e) => setSalaryForm({ ...salaryForm, effective_date: e.target.value })}
-                  className="w-full px-3 py-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] cursor-pointer"
+                  onChange={(e) => {
+                    setSalaryForm({ ...salaryForm, effective_date: e.target.value });
+                    if (salaryErrors.effective_date) setSalaryErrors({ ...salaryErrors, effective_date: "" });
+                  }}
+                  className={`w-full px-3 py-2 bg-[var(--color-surface)] border rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] cursor-pointer ${salaryErrors.effective_date ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"}`}
                 />
+                {salaryErrors.effective_date && <p className="text-xs text-[var(--color-danger)] mt-1">{salaryErrors.effective_date}</p>}
               </div>
             </div>
             <button
               type="submit"
               disabled={submitting}
-              className="mt-3 px-4 py-2 bg-[var(--color-success)] hover:bg-[var(--color-success)]/80 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              className="mt-3 px-4 py-2 bg-[var(--color-success)] hover:bg-[var(--color-success)]/80 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 inline-flex items-center gap-2"
             >
+              {submitting && <Spinner size={14} />}
               {submitting ? "Saving..." : "Save Salary Update"}
             </button>
           </form>
@@ -341,7 +417,7 @@ export default function EmployeeDetailPage() {
                   <td className="px-4 py-2.5 text-right font-mono">{formatCurrency(record.base_salary, record.currency)}</td>
                   <td className="px-4 py-2.5 text-center">{record.currency}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-[var(--color-text-muted)]">
-                    {record.salary_usd ? formatCurrency(record.salary_usd, "USD") : "—"}
+                    {record.salary_usd ? formatCurrency(record.salary_usd, "USD") : "\u2014"}
                   </td>
                 </tr>
               ))

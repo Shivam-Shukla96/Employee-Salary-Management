@@ -165,6 +165,15 @@ export const api = {
     return apiFetch(`/api/employees/${id}`, { method: "DELETE" });
   },
 
+  reactivateEmployee(id: string): Promise<Employee> {
+    return apiFetch(`/api/employees/${id}/reactivate`, { method: "POST" });
+  },
+
+  exportEmployeesCSV(params: Record<string, string> = {}): string {
+    const query = new URLSearchParams(params);
+    return `${API_BASE}/api/employees/export?${query}`;
+  },
+
   // Salary
   getCurrentSalary(employeeId: string): Promise<SalaryInfo> {
     return apiFetch(`/api/employees/${employeeId}/salary`);
