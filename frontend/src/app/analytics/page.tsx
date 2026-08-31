@@ -156,7 +156,7 @@ export default function AnalyticsPage() {
                     <span className="text-[var(--color-text-muted)]">Max: {formatUSD(dept.max_salary_usd)}</span>
                   </div>
                 </div>
-                <div className="relative h-6 bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)]/40 overflow-visible">
+                <div className="relative h-4 bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)]/40 overflow-visible">
                   {/* Range bar */}
                   <div
                     className="absolute h-full rounded-md opacity-45"
