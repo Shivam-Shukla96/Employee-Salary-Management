@@ -7,7 +7,9 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.config import settings
 
 
 # ---------------------------------------------------------------------------
@@ -21,6 +23,17 @@ class SalaryUpdate(BaseModel):
     base_salary: Decimal = Field(..., gt=0, description="New base salary, must be positive")
     currency: str = Field(..., min_length=3, max_length=3)
     effective_date: date
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, v: str) -> str:
+        v = v.strip().upper()
+        valid_currencies = set(settings.exchange_rates_dict.keys())
+        if v not in valid_currencies:
+            raise ValueError(
+                f"Invalid currency '{v}'. Allowed currencies: {', '.join(sorted(valid_currencies))}"
+            )
+        return v
 
 
 # ---------------------------------------------------------------------------

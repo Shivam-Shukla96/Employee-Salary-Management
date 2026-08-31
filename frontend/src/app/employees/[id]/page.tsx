@@ -18,6 +18,9 @@ function formatCurrency(amount: string | null, currency: string): string {
   }).format(parseFloat(amount));
 }
 
+const DEPARTMENTS = ["Engineering", "Sales", "Marketing", "HR", "Finance", "Operations", "Support", "Product"];
+const COUNTRIES = ["US", "UK", "India", "Germany", "Japan", "Brazil", "Canada", "Australia"];
+
 export default function EmployeeDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -135,12 +138,35 @@ export default function EmployeeDetailPage() {
 
   function validateEditForm(): boolean {
     const errors: Record<string, string> = {};
-    if (!editForm.full_name.trim()) errors.full_name = "Name is required";
-    if (!editForm.email.trim()) errors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email)) errors.email = "Invalid email format";
-    if (!editForm.department.trim()) errors.department = "Department is required";
-    if (!editForm.job_title.trim()) errors.job_title = "Job title is required";
-    if (!editForm.country.trim()) errors.country = "Country is required";
+    const trimmedName = editForm.full_name.trim();
+    if (!trimmedName) {
+      errors.full_name = "Full name is required";
+    } else if (trimmedName.length < 2) {
+      errors.full_name = "Full name must be at least 2 characters";
+    }
+
+    const trimmedEmail = editForm.email.trim();
+    if (!trimmedEmail) {
+      errors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      errors.email = "Invalid email format (e.g. name@company.com)";
+    }
+
+    if (!editForm.department || !DEPARTMENTS.includes(editForm.department)) {
+      errors.department = `Please select a valid department (${DEPARTMENTS.join(", ")})`;
+    }
+
+    const trimmedTitle = editForm.job_title.trim();
+    if (!trimmedTitle) {
+      errors.job_title = "Job title is required";
+    } else if (trimmedTitle.length < 2) {
+      errors.job_title = "Job title must be at least 2 characters";
+    }
+
+    if (!editForm.country || !COUNTRIES.includes(editForm.country)) {
+      errors.country = `Please select a valid country (${COUNTRIES.join(", ")})`;
+    }
+
     setEditErrors(errors);
     return Object.keys(errors).length === 0;
   }
@@ -292,21 +318,84 @@ export default function EmployeeDetailPage() {
 
         {editing ? (
           <form onSubmit={handleUpdate} className="grid grid-cols-2 gap-4">
-            {(["full_name", "email", "department", "job_title", "country"] as const).map((field) => (
-              <div key={field}>
-                <label className="block text-xs text-[var(--color-text-muted)] mb-1 capitalize">{field.replace("_", " ")}</label>
-                <input
-                  type={field === "email" ? "email" : "text"}
-                  value={editForm[field]}
-                  onChange={(e) => {
-                    setEditForm({ ...editForm, [field]: e.target.value });
-                    if (editErrors[field]) setEditErrors({ ...editErrors, [field]: "" });
-                  }}
-                  className={`w-full px-3 py-2 bg-[var(--color-bg)] border rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] ${editErrors[field] ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"}`}
-                />
-                {editErrors[field] && <p className="text-xs text-[var(--color-danger)] mt-1">{editErrors[field]}</p>}
-              </div>
-            ))}
+            <div>
+              <label className="block text-xs text-[var(--color-text-muted)] mb-1">Full Name *</label>
+              <input
+                type="text"
+                value={editForm.full_name}
+                onChange={(e) => {
+                  setEditForm({ ...editForm, full_name: e.target.value });
+                  if (editErrors.full_name) setEditErrors({ ...editErrors, full_name: "" });
+                }}
+                className={`w-full px-3 py-2 bg-[var(--color-bg)] border rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] ${editErrors.full_name ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"}`}
+                placeholder="John Doe"
+              />
+              {editErrors.full_name && <p className="text-xs text-[var(--color-danger)] mt-1">{editErrors.full_name}</p>}
+            </div>
+
+            <div>
+              <label className="block text-xs text-[var(--color-text-muted)] mb-1">Email *</label>
+              <input
+                type="email"
+                value={editForm.email}
+                onChange={(e) => {
+                  setEditForm({ ...editForm, email: e.target.value });
+                  if (editErrors.email) setEditErrors({ ...editErrors, email: "" });
+                }}
+                className={`w-full px-3 py-2 bg-[var(--color-bg)] border rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] ${editErrors.email ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"}`}
+                placeholder="john@company.com"
+              />
+              {editErrors.email && <p className="text-xs text-[var(--color-danger)] mt-1">{editErrors.email}</p>}
+            </div>
+
+            <div>
+              <label className="block text-xs text-[var(--color-text-muted)] mb-1">Department *</label>
+              <select
+                value={editForm.department}
+                onChange={(e) => {
+                  setEditForm({ ...editForm, department: e.target.value });
+                  if (editErrors.department) setEditErrors({ ...editErrors, department: "" });
+                }}
+                className={`w-full px-3 py-2 bg-[var(--color-bg)] border rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] ${editErrors.department ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"}`}
+              >
+                {DEPARTMENTS.map((dept) => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+              {editErrors.department && <p className="text-xs text-[var(--color-danger)] mt-1">{editErrors.department}</p>}
+            </div>
+
+            <div>
+              <label className="block text-xs text-[var(--color-text-muted)] mb-1">Job Title *</label>
+              <input
+                type="text"
+                value={editForm.job_title}
+                onChange={(e) => {
+                  setEditForm({ ...editForm, job_title: e.target.value });
+                  if (editErrors.job_title) setEditErrors({ ...editErrors, job_title: "" });
+                }}
+                className={`w-full px-3 py-2 bg-[var(--color-bg)] border rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] ${editErrors.job_title ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"}`}
+                placeholder="Software Engineer"
+              />
+              {editErrors.job_title && <p className="text-xs text-[var(--color-danger)] mt-1">{editErrors.job_title}</p>}
+            </div>
+
+            <div>
+              <label className="block text-xs text-[var(--color-text-muted)] mb-1">Country *</label>
+              <select
+                value={editForm.country}
+                onChange={(e) => {
+                  setEditForm({ ...editForm, country: e.target.value });
+                  if (editErrors.country) setEditErrors({ ...editErrors, country: "" });
+                }}
+                className={`w-full px-3 py-2 bg-[var(--color-bg)] border rounded-lg text-sm focus:outline-none focus:border-[var(--color-primary)] ${editErrors.country ? "border-[var(--color-danger)]" : "border-[var(--color-border)]"}`}
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              {editErrors.country && <p className="text-xs text-[var(--color-danger)] mt-1">{editErrors.country}</p>}
+            </div>
             <div className="col-span-2 flex gap-2">
               <button
                 type="submit"

@@ -79,6 +79,57 @@ class TestCreateEmployeeAPI:
         )
         assert response.status_code == 422
 
+    def test_create_employee_with_invalid_country_returns_422(self, client):
+        """Invalid country name should be rejected with 422."""
+        response = client.post(
+            "/api/employees",
+            json={
+                "full_name": "Alice",
+                "email": "alice_invalid_country@acme.com",
+                "department": "Engineering",
+                "job_title": "SE",
+                "country": "Atlantis",
+                "joining_date": "2023-01-15",
+                "base_salary": "80000",
+                "currency": "USD",
+            },
+        )
+        assert response.status_code == 422
+
+    def test_create_employee_with_invalid_department_returns_422(self, client):
+        """Invalid department name should be rejected with 422."""
+        response = client.post(
+            "/api/employees",
+            json={
+                "full_name": "Alice",
+                "email": "alice_invalid_dept@acme.com",
+                "department": "SecretAgents",
+                "job_title": "SE",
+                "country": "US",
+                "joining_date": "2023-01-15",
+                "base_salary": "80000",
+                "currency": "USD",
+            },
+        )
+        assert response.status_code == 422
+
+    def test_create_employee_with_invalid_email_returns_422(self, client):
+        """Malformed email should be rejected with 422."""
+        response = client.post(
+            "/api/employees",
+            json={
+                "full_name": "Alice",
+                "email": "not-an-email",
+                "department": "Engineering",
+                "job_title": "SE",
+                "country": "US",
+                "joining_date": "2023-01-15",
+                "base_salary": "80000",
+                "currency": "USD",
+            },
+        )
+        assert response.status_code == 422
+
 
 # ---------------------------------------------------------------------------
 # GET /api/employees — List
@@ -235,6 +286,52 @@ class TestUpdateEmployeeAPI:
             json={"full_name": "Ghost"},
         )
         assert response.status_code == 404
+
+    def test_update_employee_with_invalid_country_returns_422(self, client):
+        """Updating an employee with an invalid country should return 422."""
+        create_resp = client.post(
+            "/api/employees",
+            json={
+                "full_name": "Bob",
+                "email": "bob_test_val@acme.com",
+                "department": "Engineering",
+                "job_title": "SE",
+                "country": "US",
+                "joining_date": "2023-01-15",
+                "base_salary": "80000",
+                "currency": "USD",
+            },
+        )
+        emp_id = create_resp.json()["id"]
+
+        response = client.put(
+            f"/api/employees/{emp_id}",
+            json={"country": "InvalidCountryName"},
+        )
+        assert response.status_code == 422
+
+    def test_update_employee_with_invalid_department_returns_422(self, client):
+        """Updating an employee with an invalid department should return 422."""
+        create_resp = client.post(
+            "/api/employees",
+            json={
+                "full_name": "Bob",
+                "email": "bob_dept_test@acme.com",
+                "department": "Engineering",
+                "job_title": "SE",
+                "country": "US",
+                "joining_date": "2023-01-15",
+                "base_salary": "80000",
+                "currency": "USD",
+            },
+        )
+        emp_id = create_resp.json()["id"]
+
+        response = client.put(
+            f"/api/employees/{emp_id}",
+            json={"department": "InvalidDepartmentName"},
+        )
+        assert response.status_code == 422
 
 
 # ---------------------------------------------------------------------------
