@@ -168,7 +168,8 @@ A `.env.example` file documents all available variables.
 
 | Decision | Rationale |
 |---|---|
-| Static exchange rates over live API | Avoids external dependencies. Architecture cleanly separates the rate lookup for future swap. |
+| Static exchange rates over live API | Avoids external dependencies for MVP. Architecture cleanly isolates rate conversion in service layer for future live sync. |
+| Admin Settings Portal in Phase 2 | Keeps MVP focused on core employee compensation and analytics without introducing unnecessary master data CRUD bloat. |
 | Server-side aggregation over client-side | With 10K records, SQL aggregations are faster and more memory-efficient. |
 | Soft delete over hard delete | Matches real-world HR behavior. Inactive employees remain for historical analytics. |
 | Append-only salary history | Immutable audit trail. Supports future compensation trend analysis. |
@@ -176,3 +177,36 @@ A `.env.example` file documents all available variables.
 | URL search params over React state | Preserves filter state across navigation. Shareable URLs. |
 | No authentication | Single-user persona (HR Manager). First thing to add for production. |
 | PostgreSQL over SQLite | More production-realistic. Supports concurrent access. |
+
+---
+
+## Future Scalability & Enterprise Roadmap
+
+As the platform matures from MVP to enterprise scale, the following architectural evolutions are planned:
+
+### 1. Self-Service Admin Settings Portal (Master Data Management)
+- **Goal**: Enable non-technical HR and Finance administrators to manage master data (countries, departments, supported currencies) directly through an Admin Settings UI without requiring developer intervention, environment variable updates, or code redeployments.
+- **Architecture**: Dynamic master data tables and management endpoints (`/api/admin/currencies`, `/api/admin/departments`, `/api/admin/countries`) consumed directly by frontend forms.
+
+### 2. Date-Effective Exchange Rate Ledger (Historical vs. Live Rates)
+- **Accounting Challenge**: In live financial systems, market exchange rates fluctuate continuously. Updating a single exchange rate in place would incorrectly alter historical salary analytics retrospectively.
+- **Solution**: Implement a **Temporal Exchange Rate Ledger**:
+  ```sql
+  CREATE TABLE exchange_rate_history (
+      id UUID PRIMARY KEY,
+      currency VARCHAR(3) NOT NULL,
+      rate_to_usd NUMERIC(10, 6) NOT NULL,
+      effective_from DATE NOT NULL,
+      effective_to DATE,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  );
+  ```
+- **Benefit**: Historical salary records are evaluated against the exchange rate active on their specific `effective_date`, ensuring bulletproof accounting integrity and auditability.
+
+### 3. Automated Forex & Banking Feed Integration
+- Integrate with live exchange rate providers (e.g., Open Exchange Rates, European Central Bank API) with scheduled daily background sync and fallback caching.
+
+### 4. Role-Based Access Control (RBAC)
+- **Admin**: Master data configuration, exchange rate management, user management.
+- **HR Manager**: Employee CRUD, compensation updates, department assignments.
+- **Executive / Viewer**: Read-only access to organizational analytics and dashboards.
