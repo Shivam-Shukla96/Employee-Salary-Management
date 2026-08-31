@@ -110,10 +110,11 @@ export default function AnalyticsPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {[
           { label: "Total Employees", value: summary.total_employees.toString(), format: "number", color: "var(--color-primary)" },
           { label: "Avg Salary", value: summary.avg_salary_usd, format: "usd", color: "var(--color-accent)" },
+          { label: "Median Salary", value: summary.median_salary_usd || "0", format: "usd", color: "#38bdf8" },
           { label: "Total Payroll", value: summary.total_payroll_usd, format: "compact", color: "var(--color-success)" },
           { label: "Salary Range", value: `${formatCompact(summary.min_salary_usd)} – ${formatCompact(summary.max_salary_usd)}`, format: "raw", color: "var(--color-warning)" },
         ].map((kpi) => (
@@ -128,6 +129,61 @@ export default function AnalyticsPage() {
             </p>
           </div>
         ))}
+      </div>
+
+      {/* Salary Range Distribution */}
+      <div className="glass rounded-xl p-6">
+        <h2 className="text-lg font-semibold mb-1">Salary Range by Department</h2>
+        <p className="text-xs text-[var(--color-text-muted)] mb-5">Min–Max spread with average marker</p>
+        <div className="space-y-4">
+          {[...by_department].sort((a, b) => parseFloat(b.max_salary_usd) - parseFloat(a.max_salary_usd)).map((dept) => {
+            const globalMax = Math.max(...by_department.map((d) => parseFloat(d.max_salary_usd)), 1);
+            const min = parseFloat(dept.min_salary_usd);
+            const max = parseFloat(dept.max_salary_usd);
+            const avg = parseFloat(dept.avg_salary_usd);
+            const leftPct = (min / globalMax) * 100;
+            const widthPct = ((max - min) / globalMax) * 100;
+            const avgPct = (avg / globalMax) * 100;
+
+            return (
+              <div key={dept.department}>
+                <div className="flex items-center justify-between text-sm mb-1.5">
+                  <span>{dept.department}</span>
+                  <span className="text-xs text-[var(--color-text-muted)] font-mono">
+                    {formatCompact(dept.min_salary_usd)} – {formatCompact(dept.max_salary_usd)}
+                  </span>
+                </div>
+                <div className="relative h-3 bg-[var(--color-bg)] rounded-full">
+                  {/* Range bar */}
+                  <div
+                    className="absolute h-full rounded-full opacity-40"
+                    style={{
+                      left: `${leftPct}%`,
+                      width: `${Math.max(widthPct, 0.5)}%`,
+                      background: "linear-gradient(90deg, var(--color-primary), var(--color-accent))",
+                    }}
+                  />
+                  {/* Average marker */}
+                  <div
+                    className="absolute top-0 w-1 h-full bg-[var(--color-warning)] rounded-full"
+                    style={{ left: `${avgPct}%` }}
+                    title={`Avg: ${formatUSD(dept.avg_salary_usd)}`}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-4 mt-4 text-xs text-[var(--color-text-muted)]">
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-2 rounded-full opacity-40" style={{ background: "linear-gradient(90deg, var(--color-primary), var(--color-accent))" }} />
+            <span>Min–Max Range</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1 h-3 bg-[var(--color-warning)] rounded-full" />
+            <span>Average</span>
+          </div>
+        </div>
       </div>
 
       {/* Department & Country side-by-side */}
