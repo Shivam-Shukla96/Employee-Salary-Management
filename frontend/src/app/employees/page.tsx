@@ -233,7 +233,7 @@ function EmployeesList() {
             </thead>
             <tbody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
+                Array.from({ length: 15 }).map((_, i) => (
                   <tr key={i} className="border-b border-[var(--color-border)]">
                     {Array.from({ length: 7 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
@@ -320,7 +320,7 @@ export default function EmployeesPage() {
       <div className="animate-fade-in space-y-6">
         <div className="h-8 w-48 bg-[var(--color-border)] rounded animate-pulse-subtle" />
         <div className="glass rounded-xl p-4 h-16 animate-pulse-subtle" />
-        <div className="glass rounded-xl h-96 animate-pulse-subtle" />
+        <div className="glass rounded-xl min-h-[600px] animate-pulse-subtle" />
       </div>
     }>
       <EmployeesList />

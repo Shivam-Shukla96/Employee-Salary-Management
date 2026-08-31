@@ -166,6 +166,22 @@ class TestUpdateSalaryAPI:
         )
         assert response.status_code == 422
 
+    def test_update_salary_with_identical_values_returns_409(self, client, db_session):
+        """Updating with identical salary values should return 409 Conflict."""
+        _seed_exchange_rates(db_session)
+        emp_id = _create_employee(client)
+
+        response = client.post(
+            f"/api/employees/{emp_id}/salary",
+            json={
+                "base_salary": "85000.00",
+                "currency": "USD",
+                "effective_date": "2024-01-01",
+            },
+        )
+        assert response.status_code == 409
+        assert "No changes detected" in response.json()["detail"]
+
 
 # ---------------------------------------------------------------------------
 # GET /api/employees/{id}/salary/history — Salary history

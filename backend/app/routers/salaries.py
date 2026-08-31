@@ -58,7 +58,10 @@ def update_salary(
     db: Session = Depends(get_db),
 ):
     """Update an employee's salary (creates a new salary record)."""
-    result = service.update_salary(employee_id, data)
+    try:
+        result = service.update_salary(employee_id, data)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not result:
         raise HTTPException(status_code=404, detail="Employee not found")
     db.commit()

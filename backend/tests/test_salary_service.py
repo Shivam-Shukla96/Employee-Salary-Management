@@ -184,6 +184,18 @@ class TestUpdateSalary:
         # 70000 * 1.27 = 88900
         assert result["salary_usd"] == Decimal("88900.00")
 
+    def test_update_salary_with_identical_values_raises_value_error(
+        self, salary_service, sample_employee, exchange_rates
+    ):
+        """Updating salary with exact same amount and currency should be rejected."""
+        update_data = SalaryUpdate(
+            base_salary=Decimal("85000.00"),
+            currency="USD",
+            effective_date=date(2024, 1, 15),
+        )
+        with pytest.raises(ValueError, match="No changes detected"):
+            salary_service.update_salary(sample_employee.id, update_data)
+
     def test_update_salary_nonexistent_employee(self, salary_service):
         """Updating salary for a non-existent employee should return None."""
         import uuid

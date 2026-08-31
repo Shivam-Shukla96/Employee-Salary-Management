@@ -72,6 +72,16 @@ class SalaryService:
         if not employee:
             return None
 
+        # Guard: reject if salary data is identical to current salary
+        current = (
+            self.db.query(SalaryRecord)
+            .filter(SalaryRecord.employee_id == employee_uuid)
+            .order_by(desc(SalaryRecord.effective_date))
+            .first()
+        )
+        if current and current.base_salary == data.base_salary and current.currency == data.currency:
+            raise ValueError("No changes detected — salary and currency are identical to current values")
+
         new_record = SalaryRecord(
             employee_id=employee_uuid,
             base_salary=data.base_salary,

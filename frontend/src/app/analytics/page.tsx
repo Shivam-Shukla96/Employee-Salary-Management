@@ -26,21 +26,21 @@ function BarChart({ data, labelKey, valueKey, maxValue }: {
   maxValue: number;
 }) {
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3.5">
       {data.map((item, i) => {
         const value = parseFloat(item[valueKey]);
         const pct = maxValue > 0 ? (value / maxValue) * 100 : 0;
         return (
           <div key={i} className="group">
-            <div className="flex items-center justify-between text-sm mb-1">
-              <span className="text-[var(--color-text)]">{item[labelKey]}</span>
+            <div className="flex items-center justify-between text-sm mb-1.5">
+              <span className="text-[var(--color-text)] font-medium">{item[labelKey]}</span>
               <span className="font-mono text-[var(--color-text-muted)] text-xs">{formatUSD(item[valueKey])}</span>
             </div>
-            <div className="h-2 bg-[var(--color-bg)] rounded-full overflow-hidden">
+            <div className="h-4 bg-[var(--color-bg)] rounded-lg overflow-hidden p-0.5 border border-[var(--color-border)]/40">
               <div
-                className="h-full rounded-full transition-all duration-700 ease-out"
+                className="h-full rounded-md transition-all duration-700 ease-out"
                 style={{
-                  width: `${pct}%`,
+                  width: `${Math.max(pct, 2)}%`,
                   background: `linear-gradient(90deg, var(--color-primary), var(--color-accent))`,
                 }}
               />
@@ -135,8 +135,8 @@ export default function AnalyticsPage() {
       {/* Salary Range Distribution */}
       <div className="glass rounded-xl p-6">
         <h2 className="text-lg font-semibold mb-1">Salary Range by Department</h2>
-        <p className="text-xs text-[var(--color-text-muted)] mb-5">Min–Max spread with average marker</p>
-        <div className="space-y-4">
+        <p className="text-xs text-[var(--color-text-muted)] mb-6">Min–Max spread with exact Min, Average, and Max values</p>
+        <div className="space-y-8 pb-4">
           {[...by_department].sort((a, b) => parseFloat(b.max_salary_usd) - parseFloat(a.max_salary_usd)).map((dept) => {
             const globalMax = Math.max(...by_department.map((d) => parseFloat(d.max_salary_usd)), 1);
             const min = parseFloat(dept.min_salary_usd);
@@ -147,42 +147,74 @@ export default function AnalyticsPage() {
             const avgPct = (avg / globalMax) * 100;
 
             return (
-              <div key={dept.department}>
-                <div className="flex items-center justify-between text-sm mb-1.5">
-                  <span>{dept.department}</span>
-                  <span className="text-xs text-[var(--color-text-muted)] font-mono">
-                    {formatCompact(dept.min_salary_usd)} – {formatCompact(dept.max_salary_usd)}
-                  </span>
+              <div key={dept.department} className="pt-2">
+                <div className="flex items-center justify-between text-sm mb-3">
+                  <span className="font-medium text-sm">{dept.department}</span>
+                  <div className="flex items-center gap-3 text-xs font-mono">
+                    <span className="text-[var(--color-text-muted)]">Min: {formatUSD(dept.min_salary_usd)}</span>
+                    <span className="text-[var(--color-warning)] font-semibold">Avg: {formatUSD(dept.avg_salary_usd)}</span>
+                    <span className="text-[var(--color-text-muted)]">Max: {formatUSD(dept.max_salary_usd)}</span>
+                  </div>
                 </div>
-                <div className="relative h-3 bg-[var(--color-bg)] rounded-full">
+                <div className="relative h-6 bg-[var(--color-bg)] rounded-lg border border-[var(--color-border)]/40 overflow-visible">
                   {/* Range bar */}
                   <div
-                    className="absolute h-full rounded-full opacity-40"
+                    className="absolute h-full rounded-md opacity-45"
                     style={{
                       left: `${leftPct}%`,
                       width: `${Math.max(widthPct, 0.5)}%`,
                       background: "linear-gradient(90deg, var(--color-primary), var(--color-accent))",
                     }}
                   />
+                  {/* Min marker */}
+                  <div
+                    className="absolute top-0 w-0.5 h-full bg-[var(--color-text-muted)] opacity-60"
+                    style={{ left: `${leftPct}%` }}
+                  />
+                  {/* Max marker */}
+                  <div
+                    className="absolute top-0 w-0.5 h-full bg-[var(--color-text-muted)] opacity-60"
+                    style={{ left: `${leftPct + widthPct}%` }}
+                  />
                   {/* Average marker */}
                   <div
-                    className="absolute top-0 w-1 h-full bg-[var(--color-warning)] rounded-full"
+                    className="absolute top-0 w-1 h-full bg-[var(--color-warning)] rounded-full shadow-sm z-10"
                     style={{ left: `${avgPct}%` }}
-                    title={`Avg: ${formatUSD(dept.avg_salary_usd)}`}
                   />
+                  {/* Average floating badge */}
+                  <span
+                    className="absolute text-[10px] font-mono font-bold text-[var(--color-warning)] -top-4 bg-[var(--color-surface)] px-1 rounded shadow-sm border border-[var(--color-warning)]/30 z-10 whitespace-nowrap"
+                    style={{ left: `${avgPct}%`, transform: 'translateX(-50%)' }}
+                  >
+                    Avg: {formatCompact(dept.avg_salary_usd)}
+                  </span>
+                  {/* Min label under bar */}
+                  <span
+                    className="absolute text-[10px] font-mono text-[var(--color-text-muted)] -bottom-4 whitespace-nowrap"
+                    style={{ left: `${leftPct}%`, transform: 'translateX(-50%)' }}
+                  >
+                    Min {formatCompact(dept.min_salary_usd)}
+                  </span>
+                  {/* Max label under bar */}
+                  <span
+                    className="absolute text-[10px] font-mono text-[var(--color-text-muted)] -bottom-4 whitespace-nowrap"
+                    style={{ left: `${leftPct + widthPct}%`, transform: 'translateX(-50%)' }}
+                  >
+                    Max {formatCompact(dept.max_salary_usd)}
+                  </span>
                 </div>
               </div>
             );
           })}
         </div>
-        <div className="flex items-center gap-4 mt-4 text-xs text-[var(--color-text-muted)]">
+        <div className="flex items-center gap-4 mt-6 pt-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-muted)]">
           <div className="flex items-center gap-1.5">
-            <div className="w-6 h-2 rounded-full opacity-40" style={{ background: "linear-gradient(90deg, var(--color-primary), var(--color-accent))" }} />
-            <span>Min–Max Range</span>
+            <div className="w-6 h-2.5 rounded-sm opacity-45" style={{ background: "linear-gradient(90deg, var(--color-primary), var(--color-accent))" }} />
+            <span>Min–Max Spread</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-1 h-3 bg-[var(--color-warning)] rounded-full" />
-            <span>Average</span>
+            <div className="w-1.5 h-3 bg-[var(--color-warning)] rounded-full" />
+            <span>Average Salary Marker</span>
           </div>
         </div>
       </div>
@@ -313,12 +345,14 @@ export default function AnalyticsPage() {
           <div className="glass rounded-xl p-6">
             <h2 className="text-lg font-semibold mb-1">Average Salary by Role</h2>
             <p className="text-xs text-[var(--color-text-muted)] mb-5">Normalized to USD, sorted by compensation</p>
-            <BarChart
-              data={[...by_role].sort((a, b) => parseFloat(b.avg_salary_usd) - parseFloat(a.avg_salary_usd))}
-              labelKey="job_title"
-              valueKey="avg_salary_usd"
-              maxValue={maxRoleAvg}
-            />
+            <div className="max-h-[400px] overflow-y-auto pr-1">
+              <BarChart
+                data={[...by_role].sort((a, b) => parseFloat(b.avg_salary_usd) - parseFloat(a.avg_salary_usd))}
+                labelKey="job_title"
+                valueKey="avg_salary_usd"
+                maxValue={maxRoleAvg}
+              />
+            </div>
           </div>
 
           {/* Role Detail Table */}
@@ -326,9 +360,9 @@ export default function AnalyticsPage() {
             <div className="px-6 py-4 border-b border-[var(--color-border)]">
               <h2 className="text-lg font-semibold">Role Details</h2>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 bg-[var(--color-surface)] z-10">
                   <tr className="border-b border-[var(--color-border)]">
                     <th className="text-left px-4 py-3 text-[var(--color-text-muted)] font-medium">Job Title</th>
                     <th className="text-right px-4 py-3 text-[var(--color-text-muted)] font-medium">Employees</th>

@@ -39,6 +39,10 @@ export default function EmployeeDetailPage() {
     currency: "USD",
     effective_date: new Date().toISOString().split("T")[0],
   });
+  const [originalSalaryForm, setOriginalSalaryForm] = useState({
+    base_salary: "",
+    currency: "USD",
+  });
   const [salaryErrors, setSalaryErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -68,6 +72,13 @@ export default function EmployeeDetailPage() {
     );
   }, [editForm, originalEditForm]);
 
+  const hasSalaryChanges = useMemo(() => {
+    return (
+      salaryForm.base_salary !== originalSalaryForm.base_salary ||
+      salaryForm.currency !== originalSalaryForm.currency
+    );
+  }, [salaryForm, originalSalaryForm]);
+
   useEffect(() => {
     loadEmployee();
   }, [id]);
@@ -93,11 +104,15 @@ export default function EmployeeDetailPage() {
       setOriginalEditForm(formValues);
 
       if (emp.current_salary) {
-        setSalaryForm({
+        const salaryVals = {
           base_salary: emp.current_salary.base_salary,
           currency: emp.current_salary.currency,
+        };
+        setSalaryForm({
+          ...salaryVals,
           effective_date: new Date().toISOString().split("T")[0],
         });
+        setOriginalSalaryForm(salaryVals);
       }
     } catch (err: any) {
       setError(err.message);
@@ -132,6 +147,10 @@ export default function EmployeeDetailPage() {
 
   async function handleSalaryUpdate(e: React.FormEvent) {
     e.preventDefault();
+    if (!hasSalaryChanges) {
+      toast("No changes to save", "info");
+      return;
+    }
     if (!validateSalaryForm()) return;
     setSubmitting(true);
     try {
@@ -387,11 +406,11 @@ export default function EmployeeDetailPage() {
             </div>
             <button
               type="submit"
-              disabled={submitting}
-              className="mt-3 px-4 py-2 bg-[var(--color-success)] hover:bg-[var(--color-success)]/80 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+              disabled={submitting || !hasSalaryChanges}
+              className="mt-3 px-4 py-2 bg-[var(--color-success)] hover:bg-[var(--color-success)]/80 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
               {submitting && <Spinner size={14} />}
-              {submitting ? "Saving..." : "Save Salary Update"}
+              {submitting ? "Saving..." : hasSalaryChanges ? "Save Salary Update" : "No Changes"}
             </button>
           </form>
         )}
