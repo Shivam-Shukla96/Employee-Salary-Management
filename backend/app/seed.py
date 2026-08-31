@@ -18,60 +18,32 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal, engine
 from app.models import Employee, EmployeeStatus, ExchangeRate, SalaryRecord
 from app.database import Base
+from app.config import settings
 
 # ---------------------------------------------------------------------------
-# Reference data
+# Reference data — sourced from environment configuration
 # ---------------------------------------------------------------------------
 
-# Country → currency mapping
-COUNTRY_CURRENCY = {
-    "US": "USD",
-    "UK": "GBP",
-    "India": "INR",
-    "Germany": "EUR",
-    "Japan": "JPY",
-    "Brazil": "BRL",
-    "Canada": "CAD",
-    "Australia": "AUD",
-}
+# Country → currency mapping (from config)
+COUNTRY_CURRENCY = settings.country_currency_dict
 
-# Exchange rates: currency → rate_to_usd (multiply to get USD)
-EXCHANGE_RATES = {
-    "USD": Decimal("1.000000"),
-    "GBP": Decimal("1.270000"),   # 1 GBP = 1.27 USD
-    "INR": Decimal("0.012000"),   # 1 INR = 0.012 USD
-    "EUR": Decimal("1.090000"),   # 1 EUR = 1.09 USD
-    "JPY": Decimal("0.006700"),   # 1 JPY = 0.0067 USD
-    "BRL": Decimal("0.200000"),   # 1 BRL = 0.20 USD
-    "CAD": Decimal("0.740000"),   # 1 CAD = 0.74 USD
-    "AUD": Decimal("0.650000"),   # 1 AUD = 0.65 USD
-}
+# Exchange rates: currency → rate_to_usd (from config)
+EXCHANGE_RATES = {k: Decimal(v) for k, v in settings.exchange_rates_dict.items()}
 
-# Weighted country distribution — US and India are largest offices
-COUNTRY_WEIGHTS = {
-    "US": 25,
-    "India": 25,
-    "UK": 10,
-    "Germany": 10,
-    "Japan": 8,
-    "Brazil": 8,
-    "Canada": 7,
-    "Australia": 7,
-}
+# Departments (from config)
+DEPARTMENTS = settings.departments_list
 
-DEPARTMENTS = [
-    "Engineering",
-    "Sales",
-    "Marketing",
-    "HR",
-    "Finance",
-    "Operations",
-    "Support",
-    "Product",
-]
+# Weighted country distribution — seed-only (not configurable, only for data generation)
+COUNTRY_WEIGHTS = {c: 12 for c in settings.countries_list}
+# Override with heavier weights for US and India
+COUNTRY_WEIGHTS.update({"US": 25, "India": 25})
 
-# Department weights — Engineering is the largest
+# Department weights — Engineering is the largest (seed-only)
 DEPARTMENT_WEIGHTS = [25, 15, 10, 8, 10, 12, 12, 8]
+# Pad or trim to match DEPARTMENTS length
+while len(DEPARTMENT_WEIGHTS) < len(DEPARTMENTS):
+    DEPARTMENT_WEIGHTS.append(10)
+DEPARTMENT_WEIGHTS = DEPARTMENT_WEIGHTS[:len(DEPARTMENTS)]
 
 # Job titles per department (pyramid: more juniors than seniors)
 JOB_TITLES = {
