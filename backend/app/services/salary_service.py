@@ -13,7 +13,7 @@ from typing import Optional
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from app.models.employee import Employee
+from app.models.employee import Employee, EmployeeStatus
 from app.models.exchange_rate import ExchangeRate
 from app.models.salary_record import SalaryRecord
 from app.schemas.salary import SalaryUpdate
@@ -71,6 +71,11 @@ class SalaryService:
         )
         if not employee:
             return None
+
+        if employee.status == EmployeeStatus.INACTIVE:
+            raise ValueError(
+                f"Cannot update salary for inactive employee {employee.employee_id}. Please reactivate the employee first."
+            )
 
         # Guard: reject if salary data is identical to current salary
         current = (

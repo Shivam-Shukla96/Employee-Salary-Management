@@ -182,6 +182,26 @@ class TestUpdateSalaryAPI:
         assert response.status_code == 409
         assert "No changes detected" in response.json()["detail"]
 
+    def test_update_salary_for_inactive_employee_returns_409(self, client, db_session):
+        """Updating salary for a deactivated employee should return 409 Conflict."""
+        _seed_exchange_rates(db_session)
+        emp_id = _create_employee(client)
+
+        # Deactivate employee
+        client.delete(f"/api/employees/{emp_id}")
+
+        # Attempt to update salary
+        response = client.post(
+            f"/api/employees/{emp_id}/salary",
+            json={
+                "base_salary": "95000.00",
+                "currency": "USD",
+                "effective_date": "2024-01-01",
+            },
+        )
+        assert response.status_code == 409
+        assert "inactive" in response.json()["detail"].lower()
+
 
 # ---------------------------------------------------------------------------
 # GET /api/employees/{id}/salary/history — Salary history
