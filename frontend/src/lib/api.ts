@@ -4,7 +4,11 @@
  * Centralizes all fetch calls to the FastAPI backend.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://api-incubyte.shivamshukla.tech"
+    : "http://localhost:8000");
 
 // ---------------------------------------------------------------------------
 // Types

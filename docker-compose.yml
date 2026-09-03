@@ -1,59 +1,15 @@
 services:
-  db:
-    image: postgres:16-alpine
-    env_file:
-      - path: ./backend/.env
-        required: false
-      - path: ./.env
-        required: false
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-salary_management}
-    ports:
-      - "${DB_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./db-init:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   backend:
-    build: ./backend
+    image: shivamdev96/salary-management:latest
+    container_name: salary-management-backend
+    restart: always
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     env_file:
-      - path: ./backend/.env
-        required: false
-      - path: ./.env
-        required: false
-    volumes:
-      - ./backend:/app
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
-    env_file:
-      - path: ./frontend/.env.local
-        required: false
-      - path: ./frontend/.env
-        required: false
-      - path: ./backend/.env
-        required: false
-      - path: ./.env
-        required: false
-    environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:${BACKEND_PORT:-8000}}
-    depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-
-volumes:
-  postgres_data:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

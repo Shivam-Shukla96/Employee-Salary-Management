@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     app_name: str = "Salary Management API"
     app_env: str = "development"  # development | staging | production
     debug: bool = False
-    cors_origins: str = "http://localhost:3000"  # comma-separated
+    cors_origins: str = "http://localhost:3000,https://incubyte.shivamshukla.tech"  # comma-separated
 
     # ------------------------------------------------------------------ #
     # Pagination
@@ -89,7 +89,7 @@ class Settings(BaseSettings):
         return self.app_env == "development"
 
     model_config = {
-        "env_file": ".env",
+        "env_file": (".env", "../.env"),
         "env_file_encoding": "utf-8",
         "extra": "ignore",
     }

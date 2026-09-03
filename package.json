@@ -1,0 +1,13 @@
+{
+  "name": "incubyte-salary-management",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "docker:api:publish": "docker buildx build --platform linux/amd64 -t shivamdev96/salary-management:latest -f backend/Dockerfile . --push",
+    "docker:api:build": "docker buildx build --platform linux/amd64 -t shivamdev96/salary-management:latest -f backend/Dockerfile .",
+    "dev": "docker compose -f docker-compose.dev.yml up",
+    "dev:build": "docker compose -f docker-compose.dev.yml up --build",
+    "prod": "docker compose up",
+    "prod:down": "docker compose down"
+  }
+}

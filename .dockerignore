@@ -1,0 +1,37 @@
+# Version control
+.git
+.gitignore
+
+# Frontend
+frontend
+.next
+out
+
+# Node dependencies
+node_modules
+npm-debug.log
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+.venv
+venv
+env
+.pytest_cache
+htmlcov
+.coverage
+dist
+build
+*.egg-info
+
+# IDE & OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db

@@ -3,7 +3,13 @@
 Uses the app's SQLAlchemy Base metadata for autogenerate support.
 """
 
+import os
+import sys
+from pathlib import Path
 from logging.config import fileConfig
+
+# Ensure application directory is in sys.path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
